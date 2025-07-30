@@ -1,23 +1,27 @@
 using Mendix.StudioPro.ExtensionsAPI.UI.DockablePane;
 using Mendix.StudioPro.ExtensionsAPI.UI.WebView;
-
 using System.Diagnostics;
-
 using System.Text.Json;
 
 namespace CommitGraph
 {
+    // This class defines the logic and behavior of the dockable Git Graph pane.
     public class GitGraphViewModel : WebViewDockablePaneViewModel
     {
+        // Called when the WebView is initialized and ready to load content.
         public override void InitWebView(IWebView webView)
         {
             try
             {
+                // Get the path of the currently running assembly (plugin .dll)
                 string assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+
+                // Split the path to identify the Mendix project folder
                 string[] pathParts = assemblyPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                 string projectName = "Unknown Project";
                 string projectPath = "Unknown Path";
 
+                // Traverse the path to find the project name and base directory
                 for (int i = 0; i < pathParts.Length; i++)
                 {
                     if (pathParts[i] == ".mendix-cache" && i > 0)
@@ -28,12 +32,15 @@ namespace CommitGraph
                     }
                 }
 
+                // Prepare a list to hold commit data
                 List<Dictionary<string, string>> commits = new List<Dictionary<string, string>>();
 
                 try
                 {
+                    // Check if the current project is a Git repository
                     if (Directory.Exists(Path.Combine(projectPath, ".git")))
                     {
+                        // Run git log to get commit history
                         var logProcess = new Process
                         {
                             StartInfo = new ProcessStartInfo
@@ -51,6 +58,7 @@ namespace CommitGraph
                         string output = logProcess.StandardOutput.ReadToEnd();
                         logProcess.WaitForExit();
 
+                        // Parse each line of the git log output
                         string[] lines = output.Split('\n');
                         foreach (string line in lines)
                         {
@@ -65,6 +73,7 @@ namespace CommitGraph
                                     string hash = parts[0];
                                     string branchName = "unknown";
 
+                                    // Try to find the branch name for each commit
                                     try
                                     {
                                         var branchProcess = new Process
@@ -86,6 +95,7 @@ namespace CommitGraph
                                     }
                                     catch { }
 
+                                    // Store commit metadata
                                     commits.Add(new Dictionary<string, string>
                                     {
                                         ["hash"] = parts[0],
@@ -103,11 +113,12 @@ namespace CommitGraph
                 }
                 catch (Exception ex)
                 {
-                    // Log the error
+                    // Log any errors that occur while reading Git data
                     File.WriteAllText(Path.Combine(Path.GetTempPath(), "git_graph_error.txt"), 
                         $"Error getting Git data: {ex.Message}\n{ex.StackTrace}");
                 }
 
+                // If no commits were found insert some dummy fallback data
                 if (commits.Count == 0)
                 {
                     commits.Add(new Dictionary<string, string>
@@ -132,8 +143,11 @@ namespace CommitGraph
                     });
                 }
 
+                // Convert the commit data to JSON to embed in the HTML
                 string commitsJson = JsonSerializer.Serialize(commits);
 
+                // Generate the HTML UI for Git graph rendering using GitGraphJS
+                // Includes graph container commit detail viewer and full commit list
                 string html = $@"
                               <!DOCTYPE html>
                               <html lang='en'>
@@ -325,49 +339,33 @@ namespace CommitGraph
                 
 
                 
-                // Save to temp file and load with proper URI format
+                // Save the HTML to a temporary file
                 string tempPath = Path.Combine(Path.GetTempPath(), "git_graph_in_mendix.html");
                 File.WriteAllText(tempPath, html);
-                
-                // Format URI correctly for different platforms
-                string uriPrefix = "file://";
-                if (Environment.OSVersion.Platform == PlatformID.Win32NT)
-                {
-                    // Windows needs an extra slash
-                    uriPrefix = "file:///";
-                }
-                else if (Environment.OSVersion.Platform == PlatformID.Unix || 
-                         Environment.OSVersion.Platform == PlatformID.MacOSX)
-                {
-                    // macOS/Unix format
-                    uriPrefix = "file://";
-                }
-                
-                // Create a properly formatted URI
+
+                // Determine URI prefix based on platform Windows macOS/Linux
+                string uriPrefix = Environment.OSVersion.Platform == PlatformID.Win32NT ? "file:///" : "file://";
+
+                // Create URI to point to the temp HTML file
                 Uri fileUri = new Uri(uriPrefix + tempPath.Replace("\\", "/"));
-                
-                // Log the URI for debugging
+
+                // Log the URI to help debug WebView loading issues
                 File.WriteAllText(Path.Combine(Path.GetTempPath(), "git_graph_uri.txt"), 
                     $"Loading URI: {fileUri}\nTemp path: {tempPath}");
-                
-                // Load the HTML file into the WebView
+
+                // Load the HTML into the WebView
                 webView.Address = fileUri;
             }
             catch (Exception ex)
             {
-                // Log the error
-                File.WriteAllText(Path.Combine(Path.GetTempPath(), "git_graph_error.txt"), 
-                    $"Error: {ex.Message}\nStack trace: {ex.StackTrace}");
-                
-                // Create a simple error page
+                // On unexpected errors, render a simple red error screen in WebView
                 string errorHtml = $"<html><body style='background-color: #ff0000; color: white; padding: 20px; font-family: Arial;'><h1>Error</h1><p>{ex.Message}</p><p>{ex.StackTrace}</p></body></html>";
                 string tempPath = Path.Combine(Path.GetTempPath(), "git_graph_error.html");
                 File.WriteAllText(tempPath, errorHtml);
-                
-                // Format URI correctly
+
                 string uriPrefix = Environment.OSVersion.Platform == PlatformID.Win32NT ? "file:///" : "file://";
                 Uri errorUri = new Uri(uriPrefix + tempPath.Replace("\\", "/"));
-                
+
                 webView.Address = errorUri;
             }
         }
