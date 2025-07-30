@@ -2,7 +2,7 @@
 ```markdown
 # Git Graph (In-App) Extension for Mendix Studio Pro
 
-This extension adds a custom **"Git Graph (In-App)"** option to the Mendix Studio Pro menu. When selected, it opens a dockable pane within the IDE that visualizes the Git commit history through a graphical interface.
+This extension adds a custom Git Graph (In-App) option to the Mendix Studio Pro menu. When selected, it opens a dockable pane within the IDE that visualizes the Git commit history through a graphical interface.
 
 ---
 
@@ -30,11 +30,7 @@ This extension adds a custom **"Git Graph (In-App)"** option to the Mendix Studi
 
 Use Visual Studio to build the project and generate a `.dll` file.
 
-```sh
 dotnet build
-````
-
-> Make sure all necessary references to the Mendix Extensions API are correctly set.
 
 ---
 
@@ -42,18 +38,14 @@ dotnet build
 
 Copy the generated `.dll` file to the Mendix Studio Pro extensions directory:
 
-```sh
 C:\Program Files\Mendix\Studio Pro 11.x.x\extensions
-```
----
+
 
 ### 3. Enable Extension Development Mode
 
 Use the following command to start Studio Pro in extension mode (macOS example):
 
-```sh
 "/Applications/Studio Pro 11.0.0.73100-Beta.app/Contents/MacOS/studiopro" --enable-extension-development
-```
 
 ---
 
