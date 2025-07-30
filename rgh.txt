@@ -1,0 +1,2 @@
+enables extension
+"/Applications/Studio Pro 11.0.0.73100-Beta.app/Contents/MacOS/studiopro" --enable-extension-development
